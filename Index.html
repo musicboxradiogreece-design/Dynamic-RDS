@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced RDS PS Emulator - JOY CHANIA</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .radio-display {
+            background-color: #0c0c0c;
+            border: 4px solid #222;
+            border-radius: 12px;
+            padding: 25px 45px;
+            box-shadow: 0 0 25px rgba(235, 94, 40, 0.2);
+            text-align: center;
+        }
+
+        .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 12px;
+        }
+
+        /* Προσομοίωση οθόνης 8 χαρακτήρων RDS (Amber/Πορτοκαλί στυλ) */
+        .rds-screen {
+            background-color: #1a0f00;
+            color: #ff9900;
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: 2px solid #3d2500;
+            width: 240px;
+            height: 55px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 0 0 12px rgba(255, 153, 0, 0.6);
+            white-space: pre; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="radio-display">
+        <div class="label">Dynamic RDS PS Program</div>
+        <div id="rds" class="rds-screen">JOY     </div>
+    </div>
+
+    <script>
+        // Αρχική λίστα εισαγωγής δεδομένων. 
+        // Αν κάποιο string είναι πάνω από 8 χαρακτήρες, το script παρακάτω θα το σπάσει αυτόματα.
+        const rawTexts = [
+            "JOY     ",
+            "CHANIA  ",
+            "--------",
+            "JOIN THE JOY",
+            "--------",
+            "TEL:    ",
+            "28210   ",
+            "83100   ",
+            "--------",
+            "FAX:    ",
+            "28211   ",
+            "111322  ",
+            "--------",
+            "AKOYTE  ",
+            "JOY 106.5",
+            "--------",
+            "SONG_PLACEHOLDER", // Θα αντικατασταθεί από το KASKADE - I REMEMBER
+            "TIME_PLACEHOLDER", // Δυναμική ώρα
+            "DATE_PLACEHOLDER", // Δυναμική ημερομηνία
+            "--------",
+            "SITE:   ",
+            "WWW.    ",
+            "JOYMUSIC",
+            ".GR     ",
+            "--------",
+            "E-MAIL  ",
+            "INFO@   ",
+            "JOYMUSIC",
+            ".GR     ",
+            "--------",
+            ".GR     "
+        ];
+
+        let rdsFrames = [];
+        let currentIndex = 0;
+        const rdsElement = document.getElementById('rds');
+
+        // Συναρτήση που προετοιμάζει και σπάει το κείμενο σε ακριβή blocks των 8 χαρακτήρων
+        function compileRDS() {
+            rdsFrames = [];
+            
+            // Λήψη τρέχουσας ημερομηνίας/ώρας
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = String(now.getFullYear()).slice(-2);
+            const dateStr = `${day}/${month}/${year}`; // "20/06/26"
+            
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const timeStr = `${hours}:${minutes}   `; // "19:17   "
+
+            rawTexts.forEach(text => {
+                let processedText = text;
+
+                // Αντικατάσταση placeholders
+                if (text === "SONG_PLACEHOLDER") {
+                    processedText = "KASKADE - I REMEMBER";
+                } else if (text === "TIME_PLACEHOLDER") {
+                    processedText = timeStr;
+                } else if (text === "DATE_PLACEHOLDER") {
+                    processedText = dateStr;
+                }
+
+                // Σπάσιμο κειμένου αν είναι > 8 χαρακτήρες
+                if (processedText.length > 8) {
+                    for (let i = 0; i < processedText.length; i += 8) {
+                        let chunk = processedText.substr(i, 8);
+                        // Γέμισμα με κενά αν το τελευταίο κομμάτι είναι μικρότερο από 8
+                        chunk = chunk.padEnd(8, " ");
+                        rdsFrames.push(chunk);
+                    }
+                } else {
+                    rdsFrames.push(processedText.padEnd(8, " "));
+                }
+            });
+        }
+
+        function updateRDSDisplay() {
+            // Κάθε φορά που ο κύκλος φτάνει στο τέλος, ξαναϋπολογίζουμε 
+            // ώστε η ώρα και η ημερομηνία να ανανεώνονται σε πραγματικό χρόνο
+            if (currentIndex === 0) {
+                compileRDS();
+            }
+
+            // Εμφάνιση του τρέχοντος frame 8 χαρακτήρων
+            rdsElement.textContent = rdsFrames[currentIndex];
+
+            // Μετάβαση στο επόμενο frame
+            currentIndex = (currentIndex + 1) % rdsFrames.length;
+        }
+
+        // Αρχική εκτέλεση
+        compileRDS();
+        // Αλλαγή οθόνης κάθε 1.8 δευτερόλεπτα για πιο γρήγορη και φυσική ροή RDS
+        setInterval(updateRDSDisplay, 1800);
+    </script>
+
+</body>
+</html>
+
